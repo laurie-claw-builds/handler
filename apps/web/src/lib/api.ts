@@ -1,4 +1,4 @@
-import type { Task, AgentJob, CreateTaskDto, CreateAgentJobDto } from './types';
+import type { Task, AgentJob, CreateTaskDto, CreateAgentJobDto, FleetAgent, Workflow } from './types';
 
 // In production, Next.js rewrites /api/* to the NestJS API via next.config.ts.
 // In dev, Next.js rewrites /api/* to http://localhost:3001.
@@ -76,5 +76,22 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify(body),
       }),
+  },
+
+  fleet: {
+    list: () => request<{ agents: FleetAgent[] }>('/fleet'),
+  },
+
+  workflows: {
+    list: () => request<{ workflows: Workflow[] }>('/workflows'),
+
+    attach: (taskId: string, workflowCode: string) =>
+      request<{ workflowRun: unknown; firstJobId: string }>(
+        `/tasks/${taskId}/attach-workflow`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ workflowCode }),
+        },
+      ),
   },
 };

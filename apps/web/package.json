@@ -9,10 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.54.0",
+    "cmdk": "^1.1.1",
     "jose": "^5.9.6",
     "next": "15.3.2",
+    "posthog-js": "^1.376.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sonner": "^2.0.7",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

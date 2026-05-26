@@ -10,6 +10,7 @@ export class SeedService implements OnApplicationBootstrap {
   async onApplicationBootstrap() {
     try {
       await this.seedChannels();
+      await this.seedWorkflows();
     } catch (err) {
       console.warn('Seed skipped (DB not ready):', (err as Error).message);
     }
@@ -38,5 +39,144 @@ export class SeedService implements OnApplicationBootstrap {
     });
 
     this.logger.log('Default channels seeded.');
+  }
+
+  private async seedWorkflows() {
+    const count = await this.prisma.workflow.count();
+    if (count > 0) return;
+
+    const workflows = [
+      {
+        code: 'A',
+        name: 'New Build',
+        description:
+          'Full 18-step pipeline: Brief Owner → Architect → UX Designer → Coder → CodeRabbit fix → Reviewer → QA → Deploy.',
+        stages: [
+          {
+            agentName: 'Brief Owner',
+            model: 'claude-sonnet-4-6',
+            briefTemplate:
+              'Produce a Brief Owner doc for: {{task.title}}\n\n{{task.body}}',
+            dependsOnPrev: false,
+          },
+          {
+            agentName: 'Architect',
+            model: 'claude-opus-4-7',
+            briefTemplate:
+              'Read the Brief Owner output:\n{{prevOutput}}\n\nProduce a technical spec.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'UX Designer',
+            model: 'claude-sonnet-4-6',
+            briefTemplate:
+              'Read the spec:\n{{prevOutput}}\n\nProduce a UI brief.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'Coder',
+            model: 'claude-sonnet-4-6',
+            briefTemplate:
+              'Read the spec and UI brief:\n{{prevOutput}}\n\nBuild the app.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'QA',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Test the build. Report pass/fail.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'Deploy',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Deploy to production.',
+            dependsOnPrev: true,
+          },
+        ],
+      },
+      {
+        code: 'B',
+        name: 'Complex Feature',
+        description:
+          'Feature addition to existing app: Architect → Coder → QA → Deploy.',
+        stages: [
+          {
+            agentName: 'Architect',
+            model: 'claude-opus-4-7',
+            briefTemplate:
+              'Feature request:\n{{task.title}}\n\n{{task.body}}\n\nProduce a technical spec.',
+            dependsOnPrev: false,
+          },
+          {
+            agentName: 'Coder',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Spec:\n{{prevOutput}}\n\nBuild the feature.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'QA',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Test the feature.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'Deploy',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Deploy.',
+            dependsOnPrev: true,
+          },
+        ],
+      },
+      {
+        code: 'C',
+        name: 'Hot Fix',
+        description: 'Workflow C: 7-gate hot fix for apps in production.',
+        stages: [
+          {
+            agentName: 'Debugger',
+            model: 'claude-sonnet-4-6',
+            briefTemplate:
+              'Bug: {{task.title}}\n\n{{task.body}}\n\nReproduce and diagnose.',
+            dependsOnPrev: false,
+          },
+          {
+            agentName: 'Coder',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Diagnosis:\n{{prevOutput}}\n\nApply the fix.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'QA',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Verify the fix.',
+            dependsOnPrev: true,
+          },
+          {
+            agentName: 'Deploy',
+            model: 'claude-sonnet-4-6',
+            briefTemplate: 'Deploy the fix.',
+            dependsOnPrev: true,
+          },
+        ],
+      },
+      {
+        code: 'F',
+        name: 'Reverse Engineer',
+        description:
+          'Full reverse-engineering of an existing codebase. Produces ARCHITECTURE.md.',
+        stages: [
+          {
+            agentName: 'Architect',
+            model: 'claude-opus-4-7',
+            briefTemplate:
+              'Reverse-engineer this codebase:\n{{task.body}}\n\nProduce a full ARCHITECTURE.md.',
+            dependsOnPrev: false,
+          },
+        ],
+      },
+    ];
+
+    await this.prisma.workflow.createMany({ data: workflows, skipDuplicates: true });
+    this.logger.log('Default workflows seeded (A, B, C, F).');
   }
 }

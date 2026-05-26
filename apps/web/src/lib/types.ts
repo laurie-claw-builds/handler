@@ -74,3 +74,21 @@ export interface CreateAgentJobDto {
   brief: string;
   taskId?: string;
 }
+
+export interface FleetAgent {
+  agentName: string;
+  title: string;
+  summary: string;
+  model: string;
+  filePath: string;
+  lastUsed: string | null;
+  runCount: number;
+}
+
+export interface Workflow {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  stages: unknown;
+}
