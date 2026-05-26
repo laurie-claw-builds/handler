@@ -17,3 +17,8 @@
 - Seed service: inserts Telegram + GitHub default channels on first boot
 - next.config.ts: /api/* rewrite to NestJS API (API_URL env var)
 - Schema alignment note: spec field names differed from actual Prisma schema; Wave 2 aligns with live schema
+
+## Wave 2.5 (2026-05-26)
+- Schema aligned to spec: Task/AgentJob/Channel field names corrected, missing models added (AgentJobLog, Workflow, WorkflowRun, DecisionLog)
+- Init migration regenerated to match correct schema (DB not yet deployed, so safe full replacement)
+- All Wave 2 services, DTOs, and frontend types updated to match new field names

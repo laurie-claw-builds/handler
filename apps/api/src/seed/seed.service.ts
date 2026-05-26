@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { ChannelType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -9,35 +8,34 @@ export class SeedService implements OnApplicationBootstrap {
   constructor(private readonly prisma: PrismaService) {}
 
   async onApplicationBootstrap() {
-    await this.seedChannels();
+    try {
+      await this.seedChannels();
+    } catch (err) {
+      console.warn('Seed skipped (DB not ready):', (err as Error).message);
+    }
   }
 
   private async seedChannels() {
     const count = await this.prisma.channel.count();
     if (count > 0) return;
 
-    const defaults = [
-      {
-        type: ChannelType.TELEGRAM,
-        label: 'Telegram (Lochness Bot)',
-        config: { pollIntervalSec: 30 },
-        active: true,
-      },
-      {
-        type: ChannelType.GITHUB,
-        label: 'GitHub (laurie-claw-builds)',
-        config: { pollIntervalSec: 0 },
-        active: true,
-      },
-    ];
-
-    for (const channel of defaults) {
-      await this.prisma.channel.upsert({
-        where: { type_label: { type: channel.type, label: channel.label } },
-        create: channel,
-        update: {},
-      });
-    }
+    await this.prisma.channel.createMany({
+      data: [
+        {
+          kind: 'telegram',
+          displayName: 'Telegram (Lochness Bot)',
+          pollIntervalSec: 30,
+          enabled: true,
+        },
+        {
+          kind: 'github',
+          displayName: 'GitHub (laurie-claw-builds)',
+          pollIntervalSec: 0,
+          enabled: true,
+        },
+      ],
+      skipDuplicates: true,
+    });
 
     this.logger.log('Default channels seeded.');
   }

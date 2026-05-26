@@ -1,18 +1,10 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { AgentJobStatus } from '@prisma/client';
+import { IsString, IsOptional } from 'class-validator';
 
 export class CreateAgentJobDto {
-  @IsString()
-  agentName!: string;
-
-  @IsString()
-  description!: string;
-
-  @IsOptional()
-  @IsString()
-  taskId?: string;
-
-  @IsOptional()
-  @IsEnum(AgentJobStatus)
-  status?: AgentJobStatus;
+  @IsString() agentName!: string;
+  @IsString() model!: string;
+  @IsString() brief!: string;
+  @IsString() @IsOptional() taskId?: string;
+  @IsString() @IsOptional() workflowRunId?: string;
+  @IsOptional() stageIndex?: number;
 }

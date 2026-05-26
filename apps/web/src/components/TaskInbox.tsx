@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTasksStore } from '@/stores/tasks';
 import { api } from '@/lib/api';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Task, TaskUrgency, TaskState } from '@/lib/types';
 
 // --- Helpers ---
 
@@ -17,23 +17,22 @@ function formatAge(createdAt: string): string {
   return `${Math.floor(diffHr / 24)}d ago`;
 }
 
-const STATUS_DOT: Record<TaskStatus, string> = {
-  PENDING: 'bg-yellow-400',
-  ACTIVE: 'bg-green-400',
-  DELEGATED: 'bg-blue-400',
-  DONE: 'bg-accent',
-  SNOOZED: 'bg-gray-400',
+const STATE_DOT: Record<TaskState, string> = {
+  intake: 'bg-gray-400',
+  auto_dispatched: 'bg-blue-400',
+  lane: 'bg-yellow-400',
+  in_progress: 'bg-green-400',
+  awaiting_lachlan: 'bg-orange-400',
+  resolved: 'bg-accent',
+  dismissed: 'bg-gray-500',
 };
 
-const PRIORITY_LABEL: Record<number, { label: string; cls: string }> = {
-  1: { label: 'BLOCKER', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  2: { label: 'HIGH', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
-  3: { label: 'MED', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+const URGENCY_STYLE: Record<TaskUrgency, { label: string; cls: string }> = {
+  blocker: { label: 'BLOCKER', cls: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  high: { label: 'HIGH', cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+  normal: { label: 'NORMAL', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  low: { label: 'LOW', cls: 'bg-border text-text-dim border-border' },
 };
-
-function getPriorityStyle(priority: number) {
-  return PRIORITY_LABEL[priority] ?? { label: `P${priority}`, cls: 'bg-border text-text-dim border-border' };
-}
 
 // --- Task Card ---
 
@@ -44,7 +43,9 @@ interface TaskCardProps {
 }
 
 function TaskCard({ task, onDismiss, onDelegate }: TaskCardProps) {
-  const { label: priorityLabel, cls: priorityCls } = getPriorityStyle(task.priority);
+  const { label: urgencyLabel, cls: urgencyCls } = URGENCY_STYLE[task.urgency] ?? URGENCY_STYLE.normal;
+  const displayText = task.summary ?? task.title;
+  const sourceBadge = task.channel?.displayName ?? task.channelId ?? 'manual';
 
   return (
     <div
@@ -54,10 +55,10 @@ function TaskCard({ task, onDismiss, onDelegate }: TaskCardProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-xs px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/30 tracking-widest uppercase">
-            {task.source}
+            {sourceBadge}
           </span>
-          <span className={`font-mono text-xs px-2 py-0.5 rounded border tracking-widest ${priorityCls}`}>
-            {priorityLabel}
+          <span className={`font-mono text-xs px-2 py-0.5 rounded border tracking-widest ${urgencyCls}`}>
+            {urgencyLabel}
           </span>
         </div>
         {task.estimatedMinutes != null && (
@@ -67,13 +68,19 @@ function TaskCard({ task, onDismiss, onDelegate }: TaskCardProps) {
         )}
       </div>
 
-      <p className="text-text text-sm leading-relaxed">
-        {task.summary.length > 80 ? `${task.summary.slice(0, 80)}…` : task.summary}
+      <p className="text-text text-sm leading-relaxed font-semibold">
+        {task.title.length > 80 ? `${task.title.slice(0, 80)}...` : task.title}
       </p>
 
+      {displayText !== task.title && (
+        <p className="text-text-dim text-xs leading-relaxed">
+          {displayText.length > 120 ? `${displayText.slice(0, 120)}...` : displayText}
+        </p>
+      )}
+
       <div className="flex items-center gap-2">
-        <div className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[task.status]}`} />
-        <span className="font-mono text-xs text-text-dim tracking-widest">{task.status}</span>
+        <div className={`w-1.5 h-1.5 rounded-full ${STATE_DOT[task.state]}`} />
+        <span className="font-mono text-xs text-text-dim tracking-widest">{task.state}</span>
         <span className="font-mono text-xs text-muted">&middot; {formatAge(task.createdAt)}</span>
       </div>
 
@@ -112,7 +119,7 @@ export function TaskInbox() {
   const [needsMe, setNeedsMe] = useState(false);
 
   const filtered = needsMe
-    ? tasks.filter((t) => t.status === 'ACTIVE' || t.priority <= 2)
+    ? tasks.filter((t) => t.state === 'awaiting_lachlan' || t.urgency === 'blocker')
     : tasks;
 
   async function handleDismiss(id: string) {
@@ -127,11 +134,12 @@ export function TaskInbox() {
   async function handleDelegate(task: Task) {
     try {
       await api.agentJobs.create({
-        agentName: 'CODER',
-        description: task.summary.slice(0, 200),
+        agentName: 'PA',
+        model: 'claude-sonnet-4-6',
+        brief: task.title,
         taskId: task.id,
       });
-      const updated = await api.tasks.update(task.id, { status: 'DELEGATED' });
+      const updated = await api.tasks.update(task.id, { state: 'in_progress' });
       upsertTask(updated);
     } catch (err) {
       console.error('Delegate failed:', err);

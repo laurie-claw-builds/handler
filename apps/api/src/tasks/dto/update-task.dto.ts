@@ -1,26 +1,10 @@
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { TaskStatus } from '@prisma/client';
+import { IsString, IsOptional, IsEnum, IsInt } from 'class-validator';
+import { TaskUrgency, TaskState } from '@prisma/client';
 
 export class UpdateTaskDto {
-  @IsOptional()
-  @IsEnum(TaskStatus)
-  status?: TaskStatus;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  priority?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  estimatedMinutes?: number;
-
-  @IsOptional()
-  @IsString()
-  summary?: string;
-
-  @IsOptional()
-  @IsString()
-  decisionLog?: string;
+  @IsString() @IsOptional() summary?: string;
+  @IsEnum(TaskUrgency) @IsOptional() urgency?: TaskUrgency;
+  @IsString() @IsOptional() domain?: string;
+  @IsEnum(TaskState) @IsOptional() state?: TaskState;
+  @IsInt() @IsOptional() estimatedMinutes?: number;
 }

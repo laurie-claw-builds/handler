@@ -1,19 +1,35 @@
-// Shared frontend types — aligned with Prisma schema (no Prisma client import)
+export type ChannelKind = 'missive' | 'telegram' | 'github' | 'manual';
+export type TaskUrgency = 'low' | 'normal' | 'high' | 'blocker';
+export type TaskState = 'intake' | 'auto_dispatched' | 'lane' | 'in_progress' | 'awaiting_lachlan' | 'resolved' | 'dismissed';
+export type AgentJobStatus = 'queued' | 'running' | 'waiting_on_lachlan' | 'completed' | 'failed' | 'cancelled';
 
-export type TaskStatus = 'PENDING' | 'ACTIVE' | 'DELEGATED' | 'DONE' | 'SNOOZED';
-
-export type AgentJobStatus = 'QUEUED' | 'ACTIVE' | 'BLOCKED' | 'COMPLETE' | 'FAILED';
-
-export type ChannelType = 'EMAIL' | 'TELEGRAM' | 'ASANA' | 'GITHUB' | 'SHOPIFY' | 'MANUAL';
+export interface Channel {
+  id: string;
+  kind: ChannelKind;
+  displayName: string;
+  config: Record<string, unknown>;
+  pollIntervalSec: number;
+  lastPolledAt: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Task {
   id: string;
-  source: string;
-  summary: string;
-  status: TaskStatus;
-  priority: number;
+  channelId: string | null;
+  channel?: Channel;
+  sourceRef: string | null;
+  sourceUrl: string | null;
+  title: string;
+  body: string;
+  summary: string | null;
+  senderName: string | null;
+  senderHandle: string | null;
+  urgency: TaskUrgency;
+  domain: string | null;
+  state: TaskState;
   estimatedMinutes: number | null;
-  decisionLog: string | null;
   createdAt: string;
   updatedAt: string;
   resolvedAt: string | null;
@@ -21,38 +37,40 @@ export interface Task {
 
 export interface AgentJob {
   id: string;
+  taskId: string | null;
+  workflowRunId: string | null;
+  stageIndex: number | null;
   agentName: string;
-  description: string;
+  model: string;
+  brief: string;
   status: AgentJobStatus;
-  tokensUsed: number;
-  output: string | null;
   startedAt: string | null;
   completedAt: string | null;
+  costUsd: string;
+  tokensIn: number;
+  tokensOut: number;
+  lastActionTail: string | null;
+  output: string | null;
+  error: string | null;
   createdAt: string;
-  taskId: string | null;
-}
-
-export interface Channel {
-  id: string;
-  type: ChannelType;
-  label: string;
-  config: Record<string, unknown>;
-  active: boolean;
-  lastPolledAt: string | null;
-  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateTaskDto {
-  source: string;
-  summary: string;
-  status?: TaskStatus;
-  priority?: number;
-  estimatedMinutes?: number;
+  title: string;
+  body: string;
+  channelId?: string;
+  sourceRef?: string;
+  sourceUrl?: string;
+  summary?: string;
+  urgency?: TaskUrgency;
+  domain?: string;
+  state?: TaskState;
 }
 
 export interface CreateAgentJobDto {
   agentName: string;
-  description: string;
+  model: string;
+  brief: string;
   taskId?: string;
-  status?: AgentJobStatus;
 }

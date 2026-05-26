@@ -31,7 +31,7 @@ The Prisma schema uses the following field names (not the spec's alternate names
 - Channel: `type` (ChannelType enum), `label`, `config` (JSON)
 
 ## Non-obvious gotchas
-- API port is 3001 (internal). Caddy proxies /api/* to handler-api:3001. Next.js rewrites /api/* to localhost:3001 in dev.
+- API port is 3001 (internal). Caddy proxies `/api/*` to handler-api:3001. Next.js rewrites `/api/*` to localhost:3001 in dev.
 - EventEmitter2 is in-process. No Redis/pub-sub needed (single-user, single instance).
 - Prisma migrations must be run on VPS with DATABASE_URL set before first start.
 - `page.tsx` is a Server Component but wraps `<ShellProvider>` (a Client Component) for SSE + store init. Only TaskInbox + AgentQueue are interactive.

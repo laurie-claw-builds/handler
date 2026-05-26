@@ -5,8 +5,7 @@
 //   1. Set DATABASE_URL in apps/api/.env
 //   2. Local dev:    pnpm --filter @handler/api exec prisma migrate dev --name init
 //   3. Production:   pnpm --filter @handler/api exec prisma migrate deploy
-//      (use `migrate deploy` in production — it applies pending migrations without
-//       creating new ones and is safe to run in CI/CD pipelines)
+//      (use `migrate deploy` in production)
 //
 // To regenerate the client after schema changes:
 //   pnpm --filter @handler/api exec prisma generate
@@ -20,85 +19,197 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum TaskStatus {
-  PENDING
-  ACTIVE
-  DELEGATED
-  DONE
-  SNOOZED
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum ChannelKind {
+  missive
+  telegram
+  github
+  manual
+}
+
+enum TaskUrgency {
+  low
+  normal
+  high
+  blocker
+}
+
+enum TaskState {
+  intake
+  auto_dispatched
+  lane
+  in_progress
+  awaiting_lachlan
+  resolved
+  dismissed
 }
 
 enum AgentJobStatus {
-  QUEUED
-  ACTIVE
-  BLOCKED
-  COMPLETE
-  FAILED
+  queued
+  running
+  waiting_on_lachlan
+  completed
+  failed
+  cancelled
 }
 
-enum ChannelType {
-  EMAIL
-  TELEGRAM
-  ASANA
-  GITHUB
-  SHOPIFY
-  MANUAL
+enum AgentJobLogKind {
+  tool_call
+  tool_result
+  message
+  status
+  error
+}
+
+enum WorkflowRunState {
+  running
+  paused
+  completed
+  failed
+}
+
+enum DecisionLogKind {
+  manual_handle
+  dispatch_override
+  dismiss
+  approve
+  reject
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Channel {
+  id              String      @id @default(uuid())
+  kind            ChannelKind
+  displayName     String
+  config          Json        @default("{}")
+  pollIntervalSec Int         @default(60)
+  lastPolledAt    DateTime?
+  enabled         Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tasks Task[]
+
+  @@index([kind])
 }
 
 model Task {
-  id               String     @id @default(cuid())
-  source           String
-  summary          String
-  status           TaskStatus @default(PENDING)
-  priority         Int        @default(5)
+  id               String      @id @default(uuid())
+  channelId        String?
+  channel          Channel?    @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  sourceRef        String?
+  sourceUrl        String?
+  title            String      @db.VarChar(200)
+  body             String      @db.Text
+  summary          String?     @db.Text
+  senderName       String?
+  senderHandle     String?
+  urgency          TaskUrgency @default(normal)
+  domain           String?
+  state            TaskState   @default(lane)
   estimatedMinutes Int?
-  decisionLog      String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
   resolvedAt       DateTime?
 
-  agentJobs AgentJob[]
+  agentJobs    AgentJob[]
+  workflowRuns WorkflowRun[]
+  decisionLogs DecisionLog[]
 
-  @@index([status])
+  @@unique([channelId, sourceRef])
+  @@index([state])
+  @@index([urgency])
   @@index([createdAt(sort: Desc)])
 }
 
 model AgentJob {
-  id          String         @id @default(cuid())
-  agentName   String
-  description String
-  status      AgentJobStatus @default(QUEUED)
-  tokensUsed  Int            @default(0)
-  output      String?
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime       @default(now())
+  id             String         @id @default(uuid())
+  taskId         String?
+  task           Task?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  workflowRunId  String?
+  workflowRun    WorkflowRun?   @relation(fields: [workflowRunId], references: [id], onDelete: SetNull)
+  stageIndex     Int?
+  agentName      String
+  model          String         @default("claude-sonnet-4-6")
+  brief          String         @db.Text
+  status         AgentJobStatus @default(queued)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  costUsd        Decimal        @default(0) @db.Decimal(10, 4)
+  tokensIn       Int            @default(0)
+  tokensOut      Int            @default(0)
+  lastActionTail String?        @db.VarChar(200)
+  output         String?        @db.Text
+  error          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  taskId String?
-  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  logs         AgentJobLog[]
+  decisionLogs DecisionLog[]
 
   @@index([status])
   @@index([taskId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model AgentJobLog {
+  id         String          @id @default(uuid())
+  agentJobId String
+  agentJob   AgentJob        @relation(fields: [agentJobId], references: [id], onDelete: Cascade)
+  ts         DateTime        @default(now())
+  kind       AgentJobLogKind
+  content    String          @db.Text
+
+  @@index([agentJobId, ts])
+}
+
+model Workflow {
+  id          String @id @default(uuid())
+  code        String @unique
+  name        String
+  description String @db.Text
+  stages      Json
+
+  runs WorkflowRun[]
+}
+
+model WorkflowRun {
+  id                String           @id @default(uuid())
+  workflowId        String
+  workflow          Workflow         @relation(fields: [workflowId], references: [id])
+  taskId            String
+  task              Task             @relation(fields: [taskId], references: [id])
+  state             WorkflowRunState @default(running)
+  currentStageIndex Int              @default(0)
+  createdAt         DateTime         @default(now())
+  completedAt       DateTime?
+
+  agentJobs AgentJob[]
+}
+
+model DecisionLog {
+  id         String          @id @default(uuid())
+  taskId     String?
+  task       Task?           @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  agentJobId String?
+  agentJob   AgentJob?       @relation(fields: [agentJobId], references: [id], onDelete: SetNull)
+  kind       DecisionLogKind
+  decision   String          @db.Text
+  reasoning  String?         @db.Text
+  createdAt  DateTime        @default(now())
+
+  @@index([createdAt(sort: Desc)])
 }
 
 model RoutingRule {
-  id         String   @id @default(cuid())
-  pattern    String
-  agentName  String
+  id         String   @id @default(uuid())
+  pattern    Json
+  action     Json
   confidence Float    @default(1.0)
+  enabled    Boolean  @default(true)
   createdAt  DateTime @default(now())
 
-  @@index([pattern])
-}
-
-model Channel {
-  id           String      @id @default(cuid())
-  type         ChannelType
-  label        String
-  config       Json        @default("{}")
-  active       Boolean     @default(true)
-  lastPolledAt DateTime?
-  createdAt    DateTime    @default(now())
-
-  @@unique([type, label])
+  @@index([enabled])
 }

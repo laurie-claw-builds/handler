@@ -23,6 +23,9 @@ export class AgentJobsService {
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
+        include: {
+          logs: { orderBy: { ts: 'desc' }, take: 1 },
+        },
       }),
       this.prisma.agentJob.count({ where }),
     ]);
@@ -40,9 +43,12 @@ export class AgentJobsService {
     const job = await this.prisma.agentJob.create({
       data: {
         agentName: dto.agentName,
-        description: dto.description,
-        status: dto.status ?? AgentJobStatus.QUEUED,
+        model: dto.model,
+        brief: dto.brief,
         taskId: dto.taskId,
+        workflowRunId: dto.workflowRunId,
+        stageIndex: dto.stageIndex,
+        status: 'queued' as AgentJobStatus,
       },
     });
     this.eventEmitter.emit('agentJob.created', job);
@@ -52,14 +58,19 @@ export class AgentJobsService {
   async update(id: string, dto: UpdateAgentJobDto) {
     await this.findOne(id);
 
-    const data: Record<string, unknown> = { ...dto };
-    if (dto.status === AgentJobStatus.ACTIVE) {
+    const data: Record<string, unknown> = {};
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.costUsd !== undefined) data.costUsd = dto.costUsd;
+    if (dto.tokensIn !== undefined) data.tokensIn = dto.tokensIn;
+    if (dto.tokensOut !== undefined) data.tokensOut = dto.tokensOut;
+    if (dto.lastActionTail !== undefined) data.lastActionTail = dto.lastActionTail;
+    if (dto.output !== undefined) data.output = dto.output;
+    if (dto.error !== undefined) data.error = dto.error;
+
+    if (dto.status === 'running') {
       data.startedAt = new Date();
     }
-    if (
-      dto.status === AgentJobStatus.COMPLETE ||
-      dto.status === AgentJobStatus.FAILED
-    ) {
+    if (dto.status === 'completed' || dto.status === 'failed' || dto.status === 'cancelled') {
       data.completedAt = new Date();
     }
 

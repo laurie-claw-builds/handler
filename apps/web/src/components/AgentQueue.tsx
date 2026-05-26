@@ -19,31 +19,36 @@ const STATUS_STYLES: Record<
   AgentJobStatus,
   { dot: string; label: string; border: string; pulse?: boolean }
 > = {
-  ACTIVE: {
+  running: {
     dot: 'bg-green-400 animate-pulse',
     label: 'text-green-400',
     border: 'border-green-400/30',
     pulse: true,
   },
-  QUEUED: {
+  queued: {
     dot: 'bg-yellow-400',
     label: 'text-yellow-400',
     border: 'border-yellow-400/30',
   },
-  BLOCKED: {
-    dot: 'bg-red-400',
-    label: 'text-red-400',
-    border: 'border-red-400/30',
+  waiting_on_lachlan: {
+    dot: 'bg-orange-400',
+    label: 'text-orange-400',
+    border: 'border-orange-400/30',
   },
-  COMPLETE: {
-    dot: 'bg-accent',
-    label: 'text-accent',
-    border: 'border-accent/30',
+  completed: {
+    dot: 'bg-accent/60',
+    label: 'text-accent/60',
+    border: 'border-accent/20',
   },
-  FAILED: {
-    dot: 'bg-red-500',
-    label: 'text-red-500',
-    border: 'border-red-500/30',
+  failed: {
+    dot: 'bg-red-500/60',
+    label: 'text-red-500/60',
+    border: 'border-red-500/20',
+  },
+  cancelled: {
+    dot: 'bg-gray-500',
+    label: 'text-gray-500',
+    border: 'border-gray-500/30',
   },
 };
 
@@ -54,11 +59,15 @@ interface AgentCardProps {
 }
 
 function AgentCard({ job }: AgentCardProps) {
-  const style = STATUS_STYLES[job.status] ?? STATUS_STYLES.QUEUED;
-  const isDone = job.status === 'COMPLETE' || job.status === 'FAILED';
-  const description = job.output
+  const style = STATUS_STYLES[job.status] ?? STATUS_STYLES.queued;
+  const isDone = job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled';
+  const displayText = job.output
     ? job.output.slice(0, 100)
-    : job.description.slice(0, 100);
+    : job.lastActionTail
+    ? job.lastActionTail
+    : job.brief.slice(0, 100);
+
+  const totalTokens = job.tokensIn + job.tokensOut;
 
   // Auto-collapse done jobs after 30s
   const collapseRef = useRef<HTMLDivElement>(null);
@@ -89,18 +98,18 @@ function AgentCard({ job }: AgentCardProps) {
         <div className="flex items-center gap-1.5">
           <div className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
           <span className={`font-mono text-xs tracking-widest ${style.label}`}>
-            {job.status}
+            {job.status.toUpperCase()}
           </span>
         </div>
       </div>
 
       <p className="text-text-dim text-xs leading-relaxed">
-        {description.length >= 100 ? `${description}…` : description}
+        {displayText.length >= 100 ? `${displayText}...` : displayText}
       </p>
 
       <div className="flex items-center justify-between pt-1">
         <span className="font-mono text-xs text-muted">
-          {job.tokensUsed.toLocaleString()} tokens
+          {totalTokens.toLocaleString()} tokens
         </span>
         <span className="font-mono text-xs text-muted">
           {formatElapsed(job.startedAt)}
@@ -116,19 +125,20 @@ export function AgentQueue() {
   const jobs = useAgentJobsStore((s) => s.jobs);
   const isLoading = useAgentJobsStore((s) => s.isLoading);
 
-  const activeCount = jobs.filter((j) => j.status === 'ACTIVE').length;
-  const queuedCount = jobs.filter((j) => j.status === 'QUEUED').length;
+  const activeCount = jobs.filter((j) => j.status === 'running').length;
+  const queuedCount = jobs.filter((j) => j.status === 'queued').length;
 
-  // Show active/queued/blocked first, then done
+  // Show active/queued/waiting first, then done
   const sorted = [...jobs].sort((a, b) => {
     const order: Record<AgentJobStatus, number> = {
-      ACTIVE: 0,
-      QUEUED: 1,
-      BLOCKED: 2,
-      COMPLETE: 3,
-      FAILED: 4,
+      running: 0,
+      queued: 1,
+      waiting_on_lachlan: 2,
+      completed: 3,
+      failed: 4,
+      cancelled: 5,
     };
-    return (order[a.status] ?? 5) - (order[b.status] ?? 5);
+    return (order[a.status] ?? 6) - (order[b.status] ?? 6);
   });
 
   return (
