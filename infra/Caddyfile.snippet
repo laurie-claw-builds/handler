@@ -1,0 +1,26 @@
+# Handler Caddy routing snippet
+# Add to /etc/caddy/Caddyfile on the VPS (or the shared Caddy config)
+#
+# handler.pbthub.com -> web:3000
+# handler.pbthub.com/api -> api:3001 (strips /api prefix)
+
+handler.pbthub.com {
+  # API routes: strip /api prefix and proxy to NestJS
+  handle /api/* {
+    uri strip_prefix /api
+    reverse_proxy handler-api:3001
+  }
+
+  # All other routes: Next.js frontend
+  handle {
+    reverse_proxy handler-web:3000
+  }
+
+  # Security headers
+  header {
+    X-Frame-Options "SAMEORIGIN"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  }
+}

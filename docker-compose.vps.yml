@@ -1,0 +1,65 @@
+version: '3.9'
+
+# Handler VPS deployment
+# Domain: handler.pbthub.com (Caddy handles TLS + routing)
+# Database: Neon PostgreSQL (external, set DATABASE_URL in .env)
+#
+# Before first deploy:
+#   1. Copy apps/api/.env.example to apps/api/.env and fill values
+#   2. Copy apps/web/.env.example to apps/web/.env.local and fill values
+#   3. Run: prisma migrate deploy (from apps/api with DATABASE_URL set)
+#   4. docker compose -f docker-compose.vps.yml up -d --build
+
+services:
+  handler-api:
+    container_name: handler-api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    env_file:
+      - apps/api/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    networks:
+      - handler-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  handler-web:
+    container_name: handler-web
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - apps/web/.env.local
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: https://handler.pbthub.com/api
+    depends_on:
+      handler-api:
+        condition: service_healthy
+    networks:
+      - handler-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  handler-net:
+    driver: bridge
+    name: handler-net
