@@ -64,6 +64,14 @@ export class TasksService {
 
   async update(id: string, dto: UpdateTaskDto) {
     await this.findOne(id);
+
+    const resolvedAt =
+      dto.state === 'resolved' || dto.state === 'dismissed'
+        ? new Date()
+        : dto.state !== undefined
+          ? null
+          : undefined;
+
     const task = await this.prisma.task.update({
       where: { id },
       data: {
@@ -72,6 +80,7 @@ export class TasksService {
         domain: dto.domain,
         state: dto.state,
         estimatedMinutes: dto.estimatedMinutes,
+        ...(resolvedAt !== undefined ? { resolvedAt } : {}),
       },
       include: { channel: true },
     });

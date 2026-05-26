@@ -8,7 +8,11 @@ export class SeedService implements OnApplicationBootstrap {
   constructor(private readonly prisma: PrismaService) {}
 
   async onApplicationBootstrap() {
-    await this.seedChannels();
+    try {
+      await this.seedChannels();
+    } catch (err) {
+      console.warn('Seed skipped (DB not ready):', (err as Error).message);
+    }
   }
 
   private async seedChannels() {
