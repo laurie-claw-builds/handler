@@ -27,13 +27,15 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nestjs
 
-# Copy built app
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/prisma ./prisma
+# Copy workspace node_modules (contains all hoisted packages like @nestjs/core)
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+# Copy api-specific node_modules, dist, and prisma
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/prisma ./apps/api/prisma
 
 USER nestjs
 EXPOSE 3001
 ENV PORT=3001
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/api/dist/main.js"]
