@@ -22,3 +22,9 @@
 - Schema aligned to spec: Task/AgentJob/Channel field names corrected, missing models added (AgentJobLog, Workflow, WorkflowRun, DecisionLog)
 - Init migration regenerated to match correct schema (DB not yet deployed, so safe full replacement)
 - All Wave 2 services, DTOs, and frontend types updated to match new field names
+
+## Wave 3 (2026-05-26)
+- PA module: Missive poller (60s), Telegram poller (30s via tracker inbox), GitHub webhook receiver
+- PA classifier: Haiku-based intake classifier, auto-dispatch or lane routing
+- Agent runner: streaming Anthropic SDK, max 2 concurrent, AgentJobLog append, SSE updates
+- Fleet bind mounts added to docker-compose for Wave 4 fleet panel

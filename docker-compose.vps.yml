@@ -24,6 +24,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+    volumes:
+      - /home/lochness2-agent/agents:/fleet/agents:ro
+      - /home/lochness2-agent/pbt-shared-specialists:/fleet/shared:ro
     networks:
       - handler-net
     healthcheck:
