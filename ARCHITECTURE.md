@@ -1,7 +1,7 @@
 # Handler — Architecture
 
 Last updated: 2026-05-26
-SHA: (fill with current HEAD sha after commit)
+SHA: ef2bfb6ff0b26abc691a2d2efe8ee24b08506e55
 
 ## Stack
 - Frontend: Next.js 15 (App Router) + TypeScript + Tailwind CSS + Zustand
