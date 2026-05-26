@@ -42,32 +42,39 @@ export class WorkflowsService {
     if (!task) throw new NotFoundException(`Task ${taskId} not found`);
 
     const stages = workflow.stages as unknown as WorkflowStage[];
+    if (!Array.isArray(stages) || stages.length === 0) {
+      throw new Error(`Workflow ${workflowCode} has no stages defined`);
+    }
     const stage0 = stages[0];
 
-    const workflowRun = await this.prisma.workflowRun.create({
-      data: {
-        workflowId: workflow.id,
-        taskId: task.id,
-        state: 'running',
-        currentStageIndex: 0,
-      },
-    });
+    const { workflowRun, firstJob } = await this.prisma.$transaction(async (tx) => {
+      const run = await tx.workflowRun.create({
+        data: {
+          workflowId: workflow.id,
+          taskId: task.id,
+          state: 'running',
+          currentStageIndex: 0,
+        },
+      });
 
-    const firstJob = await this.prisma.agentJob.create({
-      data: {
-        taskId: task.id,
-        workflowRunId: workflowRun.id,
-        stageIndex: 0,
-        agentName: stage0.agentName,
-        model: stage0.model,
-        brief: interpolate(stage0.briefTemplate, task),
-        status: 'queued',
-      },
-    });
+      const job = await tx.agentJob.create({
+        data: {
+          taskId: task.id,
+          workflowRunId: run.id,
+          stageIndex: 0,
+          agentName: stage0.agentName,
+          model: stage0.model,
+          brief: interpolate(stage0.briefTemplate, task),
+          status: 'queued',
+        },
+      });
 
-    await this.prisma.task.update({
-      where: { id: taskId },
-      data: { state: 'in_progress' },
+      await tx.task.update({
+        where: { id: taskId },
+        data: { state: 'in_progress' },
+      });
+
+      return { workflowRun: run, firstJob: job };
     });
 
     this.eventEmitter.emit('agentJob.created', firstJob);

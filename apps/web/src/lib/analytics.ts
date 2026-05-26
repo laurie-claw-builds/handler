@@ -11,7 +11,6 @@ export function initAnalytics() {
       initialized = true;
     },
   });
-  initialized = true;
 }
 
 export function trackEvent(name: string, props?: Record<string, unknown>) {

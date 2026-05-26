@@ -51,7 +51,7 @@ export class SeedService implements OnApplicationBootstrap {
         name: 'New Build',
         description:
           'Full 18-step pipeline: Brief Owner → Architect → UX Designer → Coder → CodeRabbit fix → Reviewer → QA → Deploy.',
-        stages: JSON.stringify([
+        stages: [
           {
             agentName: 'Brief Owner',
             model: 'claude-sonnet-4-6',
@@ -92,14 +92,14 @@ export class SeedService implements OnApplicationBootstrap {
             briefTemplate: 'Deploy to production.',
             dependsOnPrev: true,
           },
-        ]),
+        ],
       },
       {
         code: 'B',
         name: 'Complex Feature',
         description:
           'Feature addition to existing app: Architect → Coder → QA → Deploy.',
-        stages: JSON.stringify([
+        stages: [
           {
             agentName: 'Architect',
             model: 'claude-opus-4-7',
@@ -125,13 +125,13 @@ export class SeedService implements OnApplicationBootstrap {
             briefTemplate: 'Deploy.',
             dependsOnPrev: true,
           },
-        ]),
+        ],
       },
       {
         code: 'C',
         name: 'Hot Fix',
         description: 'Workflow C: 7-gate hot fix for apps in production.',
-        stages: JSON.stringify([
+        stages: [
           {
             agentName: 'Debugger',
             model: 'claude-sonnet-4-6',
@@ -157,14 +157,14 @@ export class SeedService implements OnApplicationBootstrap {
             briefTemplate: 'Deploy the fix.',
             dependsOnPrev: true,
           },
-        ]),
+        ],
       },
       {
         code: 'F',
         name: 'Reverse Engineer',
         description:
           'Full reverse-engineering of an existing codebase. Produces ARCHITECTURE.md.',
-        stages: JSON.stringify([
+        stages: [
           {
             agentName: 'Architect',
             model: 'claude-opus-4-7',
@@ -172,7 +172,7 @@ export class SeedService implements OnApplicationBootstrap {
               'Reverse-engineer this codebase:\n{{task.body}}\n\nProduce a full ARCHITECTURE.md.',
             dependsOnPrev: false,
           },
-        ]),
+        ],
       },
     ];
 

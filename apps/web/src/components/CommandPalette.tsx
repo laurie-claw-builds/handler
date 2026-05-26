@@ -13,9 +13,11 @@ export function CommandPalette() {
   const [mode, setMode] = useState<PaletteMode>('navigate');
   const [query, setQuery] = useState('');
   const [agents, setAgents] = useState<FleetAgent[]>([]);
+  const [agentLoadState, setAgentLoadState] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [selectedAgent, setSelectedAgent] = useState<FleetAgent | null>(null);
   const [brief, setBrief] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
   const briefRef = useRef<HTMLTextAreaElement>(null);
 
   // Keyboard toggle
@@ -46,10 +48,16 @@ export function CommandPalette() {
   // Fetch fleet on open
   useEffect(() => {
     if (open && agents.length === 0) {
+      setAgentLoadState('loading');
       api.fleet
         .list()
-        .then((res) => setAgents(res.agents))
-        .catch(() => {});
+        .then((res) => {
+          setAgents(res.agents);
+          setAgentLoadState('loaded');
+        })
+        .catch(() => {
+          setAgentLoadState('error');
+        });
     }
   }, [open, agents.length]);
 
@@ -72,6 +80,8 @@ export function CommandPalette() {
 
   const handleDispatch = useCallback(async () => {
     if (!selectedAgent || !brief.trim()) return;
+    if (isDispatching) return;
+    setIsDispatching(true);
     setSubmitting(true);
     try {
       await api.agentJobs.create({
@@ -84,9 +94,10 @@ export function CommandPalette() {
     } catch {
       toast('Dispatch failed. Try again.');
     } finally {
+      setIsDispatching(false);
       setSubmitting(false);
     }
-  }, [selectedAgent, brief]);
+  }, [selectedAgent, brief, isDispatching]);
 
   if (!open) return null;
 
@@ -181,8 +192,12 @@ export function CommandPalette() {
             </div>
             <Command.List className="max-h-72 overflow-y-auto p-2">
               <Command.Empty>
-                <span className="font-mono text-xs text-[#555870] px-4 py-6 block text-center">
-                  {agents.length === 0 ? 'Loading fleet...' : 'No agents match.'}
+                <span className={`font-mono text-xs px-4 py-6 block text-center ${agentLoadState === 'error' ? 'text-amber-500' : 'text-[#555870]'}`}>
+                  {agentLoadState === 'loading'
+                    ? 'Loading agents...'
+                    : agentLoadState === 'error'
+                    ? 'Could not load fleet. Type an agent name manually.'
+                    : 'No agents found.'}
                 </span>
               </Command.Empty>
 
@@ -258,10 +273,10 @@ export function CommandPalette() {
                 </span>
                 <button
                   onClick={handleDispatch}
-                  disabled={submitting || !brief.trim()}
+                  disabled={isDispatching || submitting || !brief.trim()}
                   className="font-mono text-xs font-semibold px-4 py-2 rounded border border-[#4B9FFF] text-[#4B9FFF] hover:bg-[#4B9FFF] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {submitting ? 'DISPATCHING...' : 'DISPATCH'}
+                  {isDispatching ? 'Dispatching...' : 'DISPATCH'}
                 </button>
               </div>
             </div>
