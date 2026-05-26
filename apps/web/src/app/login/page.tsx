@@ -32,11 +32,17 @@ export default function LoginPage() {
       const data = await res.json() as { access_token: string };
 
       // Store token in httpOnly cookie via server action
-      await fetch('/api/auth/set-cookie', {
+      const cookieRes = await fetch('/api/auth/set-cookie', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: data.access_token }),
       });
+
+      if (!cookieRes.ok) {
+        setError('Failed to establish session. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       router.push('/');
     } catch {
@@ -60,10 +66,11 @@ export default function LoginPage() {
           className="bg-panel border border-border rounded-lg p-8 space-y-4"
         >
           <div>
-            <label className="block font-mono text-xs text-text-dim mb-1 tracking-widest uppercase">
+            <label htmlFor="username" className="block font-mono text-xs text-text-dim mb-1 tracking-widest uppercase">
               Username
             </label>
             <input
+              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -74,10 +81,11 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block font-mono text-xs text-text-dim mb-1 tracking-widest uppercase">
+            <label htmlFor="password" className="block font-mono text-xs text-text-dim mb-1 tracking-widest uppercase">
               Password
             </label>
             <input
+              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

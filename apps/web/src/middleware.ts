@@ -6,8 +6,10 @@ const PUBLIC_PATHS = ['/login', '/api/auth/set-cookie'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  // Allow public paths (exact match to prevent prefix collisions e.g. /login-something)
+  const normalizedPath =
+    pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname;
+  if (PUBLIC_PATHS.includes(normalizedPath)) {
     return NextResponse.next();
   }
 

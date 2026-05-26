@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   experimental: {
     serverActions: {
-      allowedOrigins: ['handler.pbthub.com'],
+      allowedOrigins: ['handler.pbthub.com', 'http://localhost:3000'],
     },
   },
 };

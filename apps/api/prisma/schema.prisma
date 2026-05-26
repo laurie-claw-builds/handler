@@ -3,7 +3,10 @@
 //
 // To apply migrations:
 //   1. Set DATABASE_URL in apps/api/.env
-//   2. Run: pnpm --filter @handler/api exec prisma migrate dev --name init
+//   2. Local dev:    pnpm --filter @handler/api exec prisma migrate dev --name init
+//   3. Production:   pnpm --filter @handler/api exec prisma migrate deploy
+//      (use `migrate deploy` in production — it applies pending migrations without
+//       creating new ones and is safe to run in CI/CD pipelines)
 //
 // To regenerate the client after schema changes:
 //   pnpm --filter @handler/api exec prisma generate
