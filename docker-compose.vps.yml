@@ -17,8 +17,6 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:3001:3001"
     env_file:
       - apps/api/.env
     environment:
@@ -29,6 +27,7 @@ services:
       - /home/lochness2-agent/pbt-shared-specialists:/fleet/shared:ro
     networks:
       - handler-net
+      - pbthub
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 30s
@@ -42,8 +41,6 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:3000:3000"
     env_file:
       - apps/web/.env.local
     environment:
@@ -55,6 +52,7 @@ services:
         condition: service_healthy
     networks:
       - handler-net
+      - pbthub
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/login"]
       interval: 30s
@@ -66,3 +64,5 @@ networks:
   handler-net:
     driver: bridge
     name: handler-net
+  pbthub:
+    external: true
