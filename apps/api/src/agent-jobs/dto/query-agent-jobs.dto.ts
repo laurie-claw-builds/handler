@@ -1,22 +1,9 @@
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsOptional, IsEnum, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AgentJobStatus } from '@prisma/client';
 
 export class QueryAgentJobsDto {
-  @IsOptional()
-  @IsEnum(AgentJobStatus)
-  status?: AgentJobStatus;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(200)
-  limit?: number = 20;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  offset?: number = 0;
+  @IsEnum(AgentJobStatus) @IsOptional() status?: AgentJobStatus;
+  @IsInt() @Min(0) @IsOptional() @Type(() => Number) limit?: number = 20;
+  @IsInt() @Min(0) @IsOptional() @Type(() => Number) offset?: number = 0;
 }

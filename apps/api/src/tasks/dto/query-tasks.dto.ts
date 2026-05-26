@@ -1,22 +1,9 @@
-import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsOptional, IsEnum, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TaskStatus } from '@prisma/client';
+import { TaskState } from '@prisma/client';
 
 export class QueryTasksDto {
-  @IsOptional()
-  @IsEnum(TaskStatus)
-  status?: TaskStatus;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(200)
-  limit?: number = 50;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  offset?: number = 0;
+  @IsEnum(TaskState) @IsOptional() state?: TaskState;
+  @IsInt() @Min(0) @IsOptional() @Type(() => Number) limit?: number = 50;
+  @IsInt() @Min(0) @IsOptional() @Type(() => Number) offset?: number = 0;
 }

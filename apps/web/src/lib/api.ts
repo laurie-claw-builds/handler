@@ -26,9 +26,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   tasks: {
-    list: (params?: { status?: string; limit?: number; offset?: number }) => {
+    list: (params?: { state?: string; limit?: number; offset?: number }) => {
       const qs = new URLSearchParams();
-      if (params?.status) qs.set('status', params.status);
+      if (params?.state) qs.set('state', params.state);
       if (params?.limit != null) qs.set('limit', String(params.limit));
       if (params?.offset != null) qs.set('offset', String(params.offset));
       const query = qs.toString() ? `?${qs.toString()}` : '';
@@ -43,7 +43,7 @@ export const api = {
         body: JSON.stringify(body),
       }),
 
-    update: (id: string, body: Partial<Task>) =>
+    update: (id: string, body: Partial<Pick<Task, 'summary' | 'urgency' | 'domain' | 'state' | 'estimatedMinutes'>>) =>
       request<Task>(`/tasks/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(body),

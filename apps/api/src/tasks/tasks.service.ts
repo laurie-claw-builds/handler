@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { QueryTasksDto } from './dto/query-tasks.dto';
-import { TaskStatus } from '@prisma/client';
+import { TaskState } from '@prisma/client';
 
 @Injectable()
 export class TasksService {
@@ -14,8 +14,8 @@ export class TasksService {
   ) {}
 
   async findAll(query: QueryTasksDto) {
-    const { status, limit = 50, offset = 0 } = query;
-    const where = status ? { status } : {};
+    const { state, limit = 50, offset = 0 } = query;
+    const where = state ? { state } : {};
 
     const [tasks, total] = await Promise.all([
       this.prisma.task.findMany({
@@ -23,6 +23,7 @@ export class TasksService {
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
+        include: { channel: true },
       }),
       this.prisma.task.count({ where }),
     ]);
@@ -31,7 +32,10 @@ export class TasksService {
   }
 
   async findOne(id: string) {
-    const task = await this.prisma.task.findUnique({ where: { id } });
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      include: { channel: true },
+    });
     if (!task) throw new NotFoundException(`Task ${id} not found`);
     return task;
   }
@@ -39,12 +43,20 @@ export class TasksService {
   async create(dto: CreateTaskDto) {
     const task = await this.prisma.task.create({
       data: {
-        source: dto.source,
+        title: dto.title,
+        body: dto.body,
+        channelId: dto.channelId,
+        sourceRef: dto.sourceRef,
+        sourceUrl: dto.sourceUrl,
         summary: dto.summary,
-        status: dto.status ?? TaskStatus.PENDING,
-        priority: dto.priority ?? 5,
+        senderName: dto.senderName,
+        senderHandle: dto.senderHandle,
+        urgency: dto.urgency,
+        domain: dto.domain,
+        state: dto.state,
         estimatedMinutes: dto.estimatedMinutes,
       },
+      include: { channel: true },
     });
     this.eventEmitter.emit('task.created', task);
     return task;
@@ -54,7 +66,14 @@ export class TasksService {
     await this.findOne(id);
     const task = await this.prisma.task.update({
       where: { id },
-      data: dto,
+      data: {
+        summary: dto.summary,
+        urgency: dto.urgency,
+        domain: dto.domain,
+        state: dto.state,
+        estimatedMinutes: dto.estimatedMinutes,
+      },
+      include: { channel: true },
     });
     this.eventEmitter.emit('task.updated', task);
     return task;
@@ -64,9 +83,9 @@ export class TasksService {
     await this.findOne(id);
     const task = await this.prisma.task.update({
       where: { id },
-      data: { status: TaskStatus.DONE, resolvedAt: new Date() },
+      data: { state: 'dismissed' as TaskState, resolvedAt: new Date() },
     });
-    this.eventEmitter.emit('task.removed', task);
+    this.eventEmitter.emit('task.removed', { id: task.id });
     return { ok: true };
   }
 }
