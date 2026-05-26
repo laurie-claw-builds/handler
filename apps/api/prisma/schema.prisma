@@ -1,0 +1,101 @@
+// Handler - Prisma Schema
+// Database: Neon PostgreSQL (external, set DATABASE_URL in .env)
+//
+// To apply migrations:
+//   1. Set DATABASE_URL in apps/api/.env
+//   2. Run: pnpm --filter @handler/api exec prisma migrate dev --name init
+//
+// To regenerate the client after schema changes:
+//   pnpm --filter @handler/api exec prisma generate
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  PENDING
+  ACTIVE
+  DELEGATED
+  DONE
+  SNOOZED
+}
+
+enum AgentJobStatus {
+  QUEUED
+  ACTIVE
+  BLOCKED
+  COMPLETE
+  FAILED
+}
+
+enum ChannelType {
+  EMAIL
+  TELEGRAM
+  ASANA
+  GITHUB
+  SHOPIFY
+  MANUAL
+}
+
+model Task {
+  id               String     @id @default(cuid())
+  source           String
+  summary          String
+  status           TaskStatus @default(PENDING)
+  priority         Int        @default(5)
+  estimatedMinutes Int?
+  decisionLog      String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  resolvedAt       DateTime?
+
+  agentJobs AgentJob[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+model AgentJob {
+  id          String         @id @default(cuid())
+  agentName   String
+  description String
+  status      AgentJobStatus @default(QUEUED)
+  tokensUsed  Int            @default(0)
+  output      String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([taskId])
+}
+
+model RoutingRule {
+  id         String   @id @default(cuid())
+  pattern    String
+  agentName  String
+  confidence Float    @default(1.0)
+  createdAt  DateTime @default(now())
+
+  @@index([pattern])
+}
+
+model Channel {
+  id           String      @id @default(cuid())
+  type         ChannelType
+  label        String
+  config       Json        @default("{}")
+  active       Boolean     @default(true)
+  lastPolledAt DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@unique([type, label])
+}
