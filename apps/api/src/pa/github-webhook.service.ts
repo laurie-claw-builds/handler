@@ -141,20 +141,26 @@ export class GitHubWebhookService {
     const existing = await this.prisma.task.findFirst({ where: { sourceRef, channelId } });
     if (existing) return { ok: true };
 
-    const task = await this.prisma.task.create({
-      data: {
-        channelId,
-        sourceRef,
-        sourceUrl: payload.check_run.html_url,
-        title: `CI failed: ${payload.repository.name} — ${payload.check_run.name}`,
-        body: `Check run failed.\nRepo: ${payload.repository.full_name}\nURL: ${payload.check_run.html_url}`,
-        state: 'intake',
-        urgency: 'high',
-        domain: 'agent-build',
-      },
-      include: { channel: true },
-    });
-    this.eventEmitter.emit('task.created', task);
+    try {
+      // DB unique constraint on (channelId, sourceRef) prevents duplicate task creation on concurrent webhooks
+      const task = await this.prisma.task.create({
+        data: {
+          channelId,
+          sourceRef,
+          sourceUrl: payload.check_run.html_url,
+          title: `CI failed: ${payload.repository.name} — ${payload.check_run.name}`,
+          body: `Check run failed.\nRepo: ${payload.repository.full_name}\nURL: ${payload.check_run.html_url}`,
+          state: 'intake',
+          urgency: 'high',
+          domain: 'agent-build',
+        },
+        include: { channel: true },
+      });
+      this.eventEmitter.emit('task.created', task);
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2002') return { ok: true }; // duplicate — already created
+      throw err;
+    }
     return { ok: true };
   }
 
@@ -184,21 +190,27 @@ export class GitHubWebhookService {
     const existing = await this.prisma.task.findFirst({ where: { sourceRef, channelId } });
     if (existing) return { ok: true };
 
-    const task = await this.prisma.task.create({
-      data: {
-        channelId,
-        sourceRef,
-        sourceUrl: payload.pull_request.html_url,
-        title: `PR opened: ${payload.repository.name} #${payload.pull_request.number} — ${payload.pull_request.title}`,
-        body: payload.pull_request.body ?? '',
-        state: 'lane',
-        urgency: 'normal',
-        senderName: payload.pull_request.user.login,
-        senderHandle: payload.pull_request.user.login,
-      },
-      include: { channel: true },
-    });
-    this.eventEmitter.emit('task.created', task);
+    try {
+      // DB unique constraint on (channelId, sourceRef) prevents duplicate task creation on concurrent webhooks
+      const task = await this.prisma.task.create({
+        data: {
+          channelId,
+          sourceRef,
+          sourceUrl: payload.pull_request.html_url,
+          title: `PR opened: ${payload.repository.name} #${payload.pull_request.number} — ${payload.pull_request.title}`,
+          body: payload.pull_request.body ?? '',
+          state: 'lane',
+          urgency: 'normal',
+          senderName: payload.pull_request.user.login,
+          senderHandle: payload.pull_request.user.login,
+        },
+        include: { channel: true },
+      });
+      this.eventEmitter.emit('task.created', task);
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2002') return { ok: true }; // duplicate — already created
+      throw err;
+    }
     return { ok: true };
   }
 
@@ -218,20 +230,26 @@ export class GitHubWebhookService {
     const existing = await this.prisma.task.findFirst({ where: { sourceRef, channelId } });
     if (existing) return { ok: true };
 
-    const task = await this.prisma.task.create({
-      data: {
-        channelId,
-        sourceRef,
-        sourceUrl: payload.review.html_url,
-        title: `CodeRabbit: changes requested on ${payload.repository.name} #${payload.pull_request.number}`,
-        body: payload.review.body ?? '',
-        state: 'intake',
-        urgency: 'high',
-        domain: 'agent-build',
-      },
-      include: { channel: true },
-    });
-    this.eventEmitter.emit('task.created', task);
+    try {
+      // DB unique constraint on (channelId, sourceRef) prevents duplicate task creation on concurrent webhooks
+      const task = await this.prisma.task.create({
+        data: {
+          channelId,
+          sourceRef,
+          sourceUrl: payload.review.html_url,
+          title: `CodeRabbit: changes requested on ${payload.repository.name} #${payload.pull_request.number}`,
+          body: payload.review.body ?? '',
+          state: 'intake',
+          urgency: 'high',
+          domain: 'agent-build',
+        },
+        include: { channel: true },
+      });
+      this.eventEmitter.emit('task.created', task);
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2002') return { ok: true }; // duplicate — already created
+      throw err;
+    }
     return { ok: true };
   }
 }

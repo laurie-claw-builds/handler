@@ -4,13 +4,19 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import Anthropic from '@anthropic-ai/sdk';
 
-const HAIKU_COST_PER_INPUT_TOKEN = 0.0000008;
-const HAIKU_COST_PER_OUTPUT_TOKEN = 0.0000024;
+const COST_PER_TOKEN: Record<string, { in: number; out: number }> = {
+  'claude-haiku-4-5-20251001': { in: 0.0000008, out: 0.0000024 },
+  'claude-haiku-4-5': { in: 0.0000008, out: 0.0000024 },
+  'claude-sonnet-4-6': { in: 0.000003, out: 0.000015 },
+  'claude-opus-4-7': { in: 0.000015, out: 0.000075 },
+};
 
 @Injectable()
 export class AgentRunnerService {
   private readonly logger = new Logger(AgentRunnerService.name);
   private readonly anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // In-memory concurrency cap. Works correctly for single-instance deployment (which this always is).
+  // For multi-instance, replace with a DB advisory lock or Redis semaphore.
   private readonly runningJobs = new Set<string>();
 
   constructor(
@@ -99,7 +105,8 @@ export class AgentRunnerService {
       const finalMessage = await stream.finalMessage();
       const tokensIn = finalMessage.usage.input_tokens;
       const tokensOut = finalMessage.usage.output_tokens;
-      const costUsd = tokensIn * HAIKU_COST_PER_INPUT_TOKEN + tokensOut * HAIKU_COST_PER_OUTPUT_TOKEN;
+      const rates = COST_PER_TOKEN[job.model] ?? COST_PER_TOKEN['claude-sonnet-4-6'];
+      const costUsd = (tokensIn * rates.in + tokensOut * rates.out).toFixed(4);
 
       let finalStatus: 'completed' | 'waiting_on_lachlan' = 'completed';
       if (accumulatedText.includes('<NEEDS_LACHLAN>')) {

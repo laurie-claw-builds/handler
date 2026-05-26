@@ -6,6 +6,7 @@ import {
   RawBodyRequest,
   Req,
   UnauthorizedException,
+  BadRequestException,
   HttpCode,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -23,14 +24,19 @@ export class GitHubWebhookController {
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Body() payload: Record<string, unknown>,
   ): Promise<HandleWebhookResult> {
-    const rawBody = req.rawBody;
+    const secret = process.env.GITHUB_WEBHOOK_SECRET;
 
-    if (rawBody) {
-      const valid = this.githubWebhookService.verifySignature(rawBody, signature);
+    if (secret) {
+      // Secret is configured — raw body must be present to verify HMAC
+      if (!req.rawBody) {
+        throw new BadRequestException('Raw body unavailable; cannot verify webhook signature');
+      }
+      const valid = this.githubWebhookService.verifySignature(req.rawBody, signature);
       if (!valid) {
         throw new UnauthorizedException('Invalid webhook signature');
       }
     }
+    // If secret is not set: skip verification (dev mode, acceptable)
 
     if (!event) {
       return { ok: true, skipped: true };

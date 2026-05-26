@@ -76,20 +76,26 @@ export class MissivePollerService {
         });
 
         if (!existing) {
-          const task = await this.prisma.task.create({
-            data: {
-              channelId: missiveChannel.id,
-              sourceRef: conv.id,
-              sourceUrl: `https://mail.missiveapp.com/#${conv.id}`,
-              title: conv.subject ?? '(no subject)',
-              body: conv.latest_message?.body ?? '',
-              senderName: conv.assignees?.[0]?.name,
-              state: 'intake',
-              urgency: 'normal',
-            },
-            include: { channel: true },
-          });
-          this.eventEmitter.emit('task.created', task);
+          try {
+            // DB unique constraint on (channelId, sourceRef) handles concurrent duplicate inserts
+            const task = await this.prisma.task.create({
+              data: {
+                channelId: missiveChannel.id,
+                sourceRef: conv.id,
+                sourceUrl: `https://mail.missiveapp.com/#${conv.id}`,
+                title: conv.subject ?? '(no subject)',
+                body: conv.latest_message?.body ?? '',
+                senderName: conv.assignees?.[0]?.name,
+                state: 'intake',
+                urgency: 'normal',
+              },
+              include: { channel: true },
+            });
+            this.eventEmitter.emit('task.created', task);
+          } catch (err) {
+            if ((err as { code?: string })?.code === 'P2002') return; // duplicate — already created
+            throw err;
+          }
         }
       }
 

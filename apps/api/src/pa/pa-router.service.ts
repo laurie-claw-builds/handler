@@ -27,6 +27,15 @@ export class PaRouterService {
 
   @Cron('*/5 * * * * *')
   async processIntakeTasks() {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      // No API key — promote all intake tasks to lane without classification
+      await this.prisma.task.updateMany({
+        where: { state: 'intake' },
+        data: { state: 'lane' },
+      });
+      return;
+    }
+
     try {
       const tasks = await this.prisma.task.findMany({
         where: { state: 'intake' },
