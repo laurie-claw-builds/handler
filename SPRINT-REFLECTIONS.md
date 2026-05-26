@@ -28,3 +28,9 @@
 - PA classifier: Haiku-based intake classifier, auto-dispatch or lane routing
 - Agent runner: streaming Anthropic SDK, max 2 concurrent, AgentJobLog append, SSE updates
 - Fleet bind mounts added to docker-compose for Wave 4 fleet panel
+
+## Wave 4 (2026-05-26)
+- Fleet panel: backend scan of /fleet/agents + /fleet/shared, GET /api/fleet, frontend FleetPanel tab
+- Workflow templates: seeded A/B/C/F on boot, POST /api/tasks/:id/attach-workflow, agent queue pipeline display
+- Cmd+K: command palette with direct dispatch (select agent + write brief, creates AgentJob)
+- Observability stubs: Sentry + PostHog conditional init (keys via env, graceful no-op if unset)

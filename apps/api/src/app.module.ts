@@ -10,6 +10,8 @@ import { AgentJobsModule } from './agent-jobs/agent-jobs.module';
 import { EventsModule } from './events/events.module';
 import { SeedModule } from './seed/seed.module';
 import { PaModule } from './pa/pa.module';
+import { FleetModule } from './fleet/fleet.module';
+import { WorkflowsModule } from './workflows/workflows.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { PaModule } from './pa/pa.module';
     EventsModule,
     SeedModule,
     PaModule,
+    FleetModule,
+    WorkflowsModule,
   ],
 })
 export class AppModule {}
