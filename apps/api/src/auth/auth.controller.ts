@@ -11,7 +11,7 @@ class LoginDto {
   password!: string;
 }
 
-@Controller('auth')
+@Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
