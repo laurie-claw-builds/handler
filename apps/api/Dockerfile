@@ -19,15 +19,15 @@ WORKDIR /app/apps/api
 RUN pnpm exec prisma generate
 RUN pnpm build
 
-# Runner stage
-FROM node:20-alpine AS runner
+# Runner stage — use slim (glibc) so mounted claude CLI binary works
+FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apk add --no-cache openssl
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nestjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs nestjs
 
 # Copy workspace node_modules (contains all hoisted packages like @nestjs/core)
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
