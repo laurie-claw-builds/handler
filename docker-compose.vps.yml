@@ -30,6 +30,7 @@ services:
       - /home/lochness2-agent/pbt-shared-specialists:/fleet/shared:ro
       - /home/lochness2-agent/.local/share/claude/versions/2.1.145:/usr/local/bin/claude:ro
       - /home/lochness2-agent/.claude:/home/lochness2-agent/.claude
+      - /home/lochness2-agent/.claude.json:/home/lochness2-agent/.claude.json:ro
     networks:
       - handler-net
       - pbthub
