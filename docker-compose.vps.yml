@@ -17,14 +17,19 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    user: "1004:1004"
     env_file:
       - apps/api/.env
     environment:
       NODE_ENV: production
       PORT: 3001
+      CLAUDE_BIN: /usr/local/bin/claude
+      CLAUDE_HOME: /home/lochness2-agent
     volumes:
       - /home/lochness2-agent/agents:/fleet/agents:ro
       - /home/lochness2-agent/pbt-shared-specialists:/fleet/shared:ro
+      - /home/lochness2-agent/.local/share/claude/versions/2.1.145:/usr/local/bin/claude:ro
+      - /home/lochness2-agent/.claude:/home/lochness2-agent/.claude
     networks:
       - handler-net
       - pbthub

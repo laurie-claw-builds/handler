@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { Cron } from '@nestjs/schedule';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
-import Anthropic from '@anthropic-ai/sdk';
+
+const execFileAsync = promisify(execFile);
 
 interface ClassificationResult {
   summary: string;
@@ -15,10 +18,12 @@ interface ClassificationResult {
   brief: string | null;
 }
 
+const CLAUDE_BIN = process.env.CLAUDE_BIN ?? '/usr/local/bin/claude';
+const CLAUDE_HOME = process.env.CLAUDE_HOME ?? '/home/lochness2-agent';
+
 @Injectable()
 export class PaRouterService {
   private readonly logger = new Logger(PaRouterService.name);
-  private readonly anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   constructor(
     private readonly prisma: PrismaService,
@@ -27,14 +32,6 @@ export class PaRouterService {
 
   @Cron('*/5 * * * * *')
   async processIntakeTasks() {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      // No API key — promote all intake tasks to lane without classification
-      await this.prisma.task.updateMany({
-        where: { state: 'intake' },
-        data: { state: 'lane' },
-      });
-      return;
-    }
 
     try {
       const tasks = await this.prisma.task.findMany({
@@ -69,10 +66,7 @@ export class PaRouterService {
         `Sender: ${task.senderName ?? 'unknown'}`,
       ].join('\n');
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: `You are a task classifier for Lachlan Russell, Head of Product at PBT (dance education company).
+      const systemPrompt = `You are a task classifier for Lachlan Russell, Head of Product at PBT (dance education company).
 Your job is to classify incoming tasks and decide how to route them.
 
 Agent roster (agents Lachlan can dispatch):
@@ -101,12 +95,22 @@ Rules:
 - auto_dispatch ONLY for: failed CI (route to Debugger), CodeRabbit review requests (route to Coder), clearly agent-actionable tasks with full context
 - lane for: tasks needing Lachlan's decision, tasks with missing context, all Telegram messages from Lachlan
 - dismiss for: spam, notifications with no action required, automated status emails
-- Never auto_dispatch Telegram messages from lochness91 (Lachlan) — always lane them`,
-        messages: [{ role: 'user', content: userMessage }],
-      });
+- Never auto_dispatch Telegram messages from lochness91 (Lachlan) — always lane them`;
 
-      const text =
-        response.content[0].type === 'text' ? response.content[0].text : '';
+      const fullPrompt = `<system>\n${systemPrompt}\n</system>\n\n${userMessage}\n\nReturn only valid JSON, no markdown fences.`;
+
+      const { stdout } = await execFileAsync(
+        CLAUDE_BIN,
+        ['-p', fullPrompt, '--model', 'claude-haiku-4-5-20251001'],
+        {
+          env: { ...process.env, HOME: CLAUDE_HOME },
+          timeout: 30000,
+        },
+      );
+
+      const raw = stdout.trim();
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      const text = jsonMatch ? jsonMatch[0] : '';
       let result: ClassificationResult;
 
       try {
